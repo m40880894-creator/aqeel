@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>عقيل بن مقرن - المالية</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  * { font-family: 'Tajawal', sans-serif; box-sizing: border-box; }
+  body { background: #F3F4F6; margin: 0; padding: 0; }
+  .stat-card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid #E5E7EB; }
+  .stat-label { color: #6B7280; font-size: 14px; margin-bottom: 8px; }
+  .stat-value { font-size: 32px; font-weight: 900; margin: 0; }
+  .btn-primary { background: #1E3A5F; color: white; padding: 14px 24px; border-radius: 12px; font-weight: 700; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; flex: 1; }
+  .btn-secondary { background: #4A7C59; color: white; padding: 14px 24px; border-radius: 12px; font-weight: 700; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; flex: 1; }
+  .tab { padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: 600; color: #6B7280; background: transparent; border: none; font-size: 15px; white-space: nowrap; }
+  .tab.active { background: white; color: #1E3A5F; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+  .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; align-items: flex-end; justify-content: center; }
+  .modal.show { display: flex; }
+  .modal-content { background: white; width: 100%; max-width: 500px; border-radius: 20px 20px 0 0; padding: 24px; max-height: 90vh; overflow-y: auto; }
+  .input-field { width: 100%; padding: 12px 16px; border: 1px solid #E5E7EB; border-radius: 10px; font-size: 15px; outline: none; }
+  .input-field:focus { border-color: #1E3A5F; }
+  .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #1E3A5F; color: white; padding: 12px 24px; border-radius: 10px; z-index: 100; display: none; font-weight: 600; }
+  .toast.show { display: block; animation: slide 0.3s; }
+  @keyframes slide { from { opacity: 0; transform: translate(-50%, -20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  .transaction-item { background: white; border-radius: 12px; padding: 14px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #E5E7EB; }
+  .program-item { background: white; border-radius: 12px; padding: 14px; margin-bottom: 10px; border: 1px solid #E5E7EB; }
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<!-- الحاوية الرئيسية (بحجم الجوال) -->
+<div class="max-w-md mx-auto min-h-screen bg-gray-100 relative">
+
+  <!-- الشريط العلوي -->
+  <div class="bg-gradient-to-l from-purple-600 to-blue-500 p-4 pb-6 text-white">
+    <div class="flex justify-between items-center mb-4">
+      <div class="flex items-center gap-3 text-sm">
+        <div class="flex items-center gap-1">
+          <span class="w-2 h-2 bg-green-400 rounded-full"></span>
+          <span id="topBalance">510 ر.س</span>
+        </div>
+        <div class="flex items-center gap-1">
+          <span>↗</span>
+          <span id="topIncome">1,035</span>
+        </div>
+        <div class="flex items-center gap-1">
+          <span>↘</span>
+          <span id="topExpense">525</span>
+        </div>
+      </div>
+      <button class="bg-white/20 p-2 rounded-lg">☰</button>
+    </div>
+  </div>
+
+  <!-- المحتوى -->
+  <div class="p-4 -mt-4">
+
+    <!-- البطاقات الأربع -->
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      <div class="stat-card">
+        <div class="stat-label">إجمالي الإيرادات</div>
+        <div class="stat-value text-green-600" id="totalIncome">1,035 ر.س</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">إجمالي المصروفات</div>
+        <div class="stat-value text-red-500" id="totalExpense">525 ر.س</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">الرصيد الحالي</div>
+        <div class="stat-value" style="color: #4A7C59;" id="currentBalance">510 ر.س</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">صافي الحركة</div>
+        <div class="stat-value" style="color: #4A7C59;" id="netMovement">510 ر.س</div>
+      </div>
+    </div>
+
+    <!-- الأزرار -->
+    <div class="flex gap-3 mb-4">
+      <button onclick="openModal('transactionModal')" class="btn-primary">
+        <span class="text-xl">+</span> إضافة حركة مالية
+      </button>
+      <button onclick="openModal('programModal')" class="btn-secondary">
+        <span></span> إضافة برنامج
+      </button>
+    </div>
+
+    <!-- التبويبات -->
+    <div class="flex gap-2 mb-4 overflow-x-auto bg-gray-100 p-1 rounded-xl">
+      <button class="tab active" onclick="switchTab('programs', this)">البرامج</button>
+      <button class="tab" onclick="switchTab('income', this)">سجل المدخلات</button>
+      <button class="tab" onclick="switchTab('expense', this)">سجل المخرجات</button>
+    </div>
+
+    <!-- محتوى التبويبات -->
+    <div id="tab-programs" class="tab-content">
+      <!-- بحث وترتيب -->
+      <div class="bg-white rounded-xl p-3 mb-3 border border-gray-200">
+        <div class="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2 mb-2">
+          <span class="text-gray-400">🔍</span>
+          <input type="text" placeholder="بحث في البرامج..." class="bg-transparent outline-none flex-1 text-sm" id="searchProgram" oninput="renderPrograms()">
+        </div>
+        <select class="w-full bg-gray-100 rounded-lg px-3 py-2 text-sm outline-none" id="sortProgram" onchange="renderPrograms()">
+          <option value="name">ترتيب حسب الاسم</option>
+          <option value="date">ترتيب حسب التاريخ</option>
+          <option value="balance">ترتيب حسب الرصيد</option>
+        </select>
+      </div>
+
+      <!-- إحصائيات البرامج -->
+      <div class="grid grid-cols-2 gap-3 mb-3">
+        <div class="stat-card">
+          <div class="stat-label">إجمالي البرامج</div>
+          <div class="stat-value text-gray-800" id="totalPrograms">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">إجمالي الميزانيات</div>
+          <div class="stat-value text-gray-800" id="totalBudgets">0</div>
+        </div>
+      </div>
+
+      <!-- قائمة البرامج -->
+      <div id="programsList"></div>
+    </div>
+
+    <div id="tab-income" class="tab-content hidden">
+      <div id="incomeList"></div>
+    </div>
+
+    <div id="tab-expense" class="tab-content hidden">
+      <div id="expenseList"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal: إضافة حركة مالية -->
+<div id="transactionModal" class="modal">
+  <div class="modal-content">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-bold">إضافة حركة مالية</h2>
+      <button onclick="closeModal('transactionModal')" class="text-gray-500 text-2xl">✕</button>
+    </div>
+    <form onsubmit="saveTransaction(event)" class="space-y-3">
+      <div>
+        <label class="block text-sm font-medium mb-1">النوع *</label>
+        <select id="txType" class="input-field" required>
+          <option value="INCOME">مدخل (إيراد)</option>
+          <option value="EXPENSE">مخرج (مصروف)</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">المبلغ (ر.س) *</label>
+        <input id="txAmount" type="number" step="0.01" min="0.01" class="input-field" required>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">الوصف *</label>
+        <input id="txDesc" class="input-field" required>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">التصنيف</label>
+        <select id="txCategory" class="input-field">
+          <option>تبرع</option>
+          <option>دعم مالي</option>
+          <option>مساهمة</option>
+          <option>مصروف برنامج</option>
+          <option>مشتريات</option>
+          <option>مكافآت</option>
+          <option>أخرى</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">البرنامج (اختياري)</label>
+        <select id="txProgram" class="input-field">
+          <option value="">بدون برنامج</option>
+        </select>
+      </div>
+      <button type="submit" class="btn-primary w-full mt-4">حفظ الحركة</button>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: إضافة برنامج -->
+<div id="programModal" class="modal">
+  <div class="modal-content">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-bold">إضافة برنامج</h2>
+      <button onclick="closeModal('programModal')" class="text-gray-500 text-2xl">✕</button>
+    </div>
+    <form onsubmit="saveProgram(event)" class="space-y-3">
+      <div>
+        <label class="block text-sm font-medium mb-1">اسم البرنامج *</label>
+        <input id="progName" class="input-field" required>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">الرمز *</label>
+        <input id="progCode" class="input-field" required>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">الميزانية (ر.س)</label>
+        <input id="progBudget" type="number" step="0.01" value="0" class="input-field">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">الوصف</label>
+        <textarea id="progDesc" class="input-field" rows="2"></textarea>
+      </div>
+      <button type="submit" class="btn-secondary w-full mt-4">حفظ البرنامج</button>
+    </form>
+  </div>
+</div>
+
+<script>
+// البيانات
+let transactions = JSON.parse(localStorage.getItem('aqeel_tx') || '[]');
+let programs = JSON.parse(localStorage.getItem('aqeel_prog') || '[]');
+
+// بيانات تجريبية أولية
+if (transactions.length === 0 && programs.length === 0) {
+  transactions = [
+    { id: 1, type: 'INCOME', amount: 1000, desc: 'تبرع من فاعل خير', category: 'تبرع', date: '2026-10-20' },
+    { id: 2, type: 'INCOME', amount: 35, desc: 'مساهمة صغيرة', category: 'مساهمة', date: '2026-10-19' },
+    { id: 3, type: 'EXPENSE', amount: 500, desc: 'مشتريات للرحلة', category: 'مشتريات', date: '2026-10-18' },
+    { id: 4, type: 'EXPENSE', amount: 25, desc: 'مصروفات تشغيلية', category: 'أخرى', date: '2026-10-17' }
+  ];
+  saveAll();
+}
+
+function saveAll() {
+  localStorage.setItem('aqeel_tx', JSON.stringify(transactions));
+  localStorage.setItem('aqeel_prog', JSON.stringify(programs));
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function openModal(id) {
+  document.getElementById(id).classList.add('show');
+  updateProgramSelect();
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+  document.getElementById('tab-' + tab).classList.remove('hidden');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function updateProgramSelect() {
+  const opts = programs.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  document.getElementById('txProgram').innerHTML = '<option value="">بدون برنامج</option>' + opts;
+}
+
+function saveTransaction(e) {
+  e.preventDefault();
+  const tx = {
+    id: Date.now(),
+    type: document.getElementById('txType').value,
+    amount: parseFloat(document.getElementById('txAmount').value),
+    desc: document.getElementById('txDesc').value,
+    category: document.getElementById('txCategory').value,
+    programId: document.getElementById('txProgram').value ? parseInt(document.getElementById('txProgram').value) : null,
+    date: new Date().toISOString().split('T')[0]
+  };
+  transactions.push(tx);
+  saveAll();
+  closeModal('transactionModal');
+  e.target.reset();
+  render();
+  toast('✅ تم حفظ الحركة');
+}
+
+function saveProgram(e) {
+  e.preventDefault();
+  const prog = {
+    id: Date.now(),
+    name: document.getElementById('progName').value,
+    code: document.getElementById('progCode').value,
+    budget: parseFloat(document.getElementById('progBudget').value) || 0,
+    desc: document.getElementById('progDesc').value,
+    date: new Date().toISOString().split('T')[0]
+  };
+  programs.push(prog);
+  saveAll();
+  closeModal('programModal');
+  e.target.reset();
+  render();
+  toast('✅ تم حفظ البرنامج');
+}
+
+function deleteTx(id) {
+  if (!confirm('حذف هذه الحركة؟')) return;
+  transactions = transactions.filter(t => t.id !== id);
+  saveAll();
+  render();
+  toast('🗑️ تم الحذف');
+}
+
+function deleteProg(id) {
+  if (!confirm('حذف هذا البرنامج؟')) return;
+  programs = programs.filter(p => p.id !== id);
+  saveAll();
+  render();
+  toast('🗑️ تم الحذف');
+}
+
+function formatMoney(n) {
+  return n.toLocaleString('ar-SA') + ' ر.س';
+}
+
+function render() {
+  let totalIncome = 0, totalExpense = 0;
+  transactions.forEach(tx => {
+    if (tx.type === 'INCOME') totalIncome += tx.amount;
+    else totalExpense += tx.amount;
+  });
+  const balance = totalIncome - totalExpense;
+  const totalBudget = programs.reduce((s, p) => s + p.budget, 0);
+
+  document.getElementById('totalIncome').textContent = formatMoney(totalIncome);
+  document.getElementById('totalExpense').textContent = formatMoney(totalExpense);
+  document.getElementById('currentBalance').textContent = formatMoney(balance);
+  document.getElementById('netMovement').textContent = formatMoney(balance);
+  document.getElementById('topBalance').textContent = balance + ' ر.س';
+  document.getElementById('topIncome').textContent = totalIncome.toLocaleString('ar-SA');
+  document.getElementById('topExpense').textContent = totalExpense.toLocaleString('ar-SA');
+  document.getElementById('totalPrograms').textContent = programs.length;
+  document.getElementById('totalBudgets').textContent = totalBudget.toLocaleString('ar-SA');
+
+  renderPrograms();
+  renderTransactions('income');
+  renderTransactions('expense');
+}
+
+function renderPrograms() {
+  const search = document.getElementById('searchProgram').value.toLowerCase();
+  const sort = document.getElementById('sortProgram').value;
+  
+  let filtered = programs.filter(p => p.name.toLowerCase().includes(search));
+  
+  if (sort === 'name') filtered.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+  else if (sort === 'date') filtered.sort((a, b) => b.id - a.id);
+  else if (sort === 'balance') {
+    filtered.sort((a, b) => {
+      const balA = transactions.filter(t => t.programId === a.id).reduce((s, t) => s + (t.type === 'INCOME' ? t.amount : -t.amount), 0);
+      const balB = transactions.filter(t => t.programId === b.id).reduce((s, t) => s + (t.type === 'INCOME' ? t.amount : -t.amount), 0);
+      return balB - balA;
+    });
+  }
+
+  const html = filtered.length === 0 
+    ? '<div class="text-center py-8 text-gray-400">لا توجد برامج</div>'
+    : filtered.map(p => {
+      const received = transactions.filter(t => t.programId === p.id && t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
+      const spent = transactions.filter(t => t.programId === p.id && t.type === 'EXPENSE').reduce((s, t) => s + t.amount, 0);
+      const bal = received - spent;
+      return `
+        <div class="program-item">
+          <div class="flex justify-between items-start mb-2">
+            <div>
+              <h3 class="font-bold text-gray-900">${p.name}</h3>
+              <p class="text-xs text-gray-500">رمز: ${p.code}</p>
+            </div>
+            <button onclick="deleteProg(${p.id})" class="text-red-500 text-sm">حذف</button>
+          </div>
+          <div class="grid grid-cols-3 gap-2 text-xs mt-3">
+            <div class="bg-green-50 p-2 rounded-lg text-center">
+              <div class="text-gray-500">مستلم</div>
+              <div class="font-bold text-green-600">${received}</div>
+            </div>
+            <div class="bg-red-50 p-2 rounded-lg text-center">
+              <div class="text-gray-500">مصروف</div>
+              <div class="font-bold text-red-600">${spent}</div>
+            </div>
+            <div class="bg-blue-50 p-2 rounded-lg text-center">
+              <div class="text-gray-500">المتبقي</div>
+              <div class="font-bold text-blue-600">${bal}</div>
+            </div>
+          </div>
+          ${p.budget > 0 ? `<div class="text-xs text-gray-500 mt-2">الميزانية: ${p.budget} ر.س</div>` : ''}
+        </div>
+      `;
+    }).join('');
+  
+  document.getElementById('programsList').innerHTML = html;
+}
+
+function renderTransactions(type) {
+  const filtered = transactions.filter(t => t.type === (type === 'income' ? 'INCOME' : 'EXPENSE'))
+    .sort((a, b) => b.id - a.id);
+  
+  const html = filtered.length === 0
+    ? '<div class="text-center py-8 text-gray-400">لا توجد حركات</div>'
+    : filtered.map(t => `
+      <div class="transaction-item">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full flex items-center justify-center ${t.type === 'INCOME' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}">
+            ${t.type === 'INCOME' ? '↗' : '↘'}
+          </div>
+          <div>
+            <p class="font-medium text-sm">${t.desc}</p>
+            <p class="text-xs text-gray-500">${t.category} • ${t.date}</p>
+          </div>
+        </div>
+        <div class="text-left">
+          <p class="font-bold ${t.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}">${t.type === 'INCOME' ? '+' : '-'}${t.amount} ر.س</p>
+          <button onclick="deleteTx(${t.id})" class="text-xs text-red-500 mt-1">حذف</button>
+        </div>
+      </div>
+    `).join('');
+  
+  document.getElementById(type + 'List').innerHTML = html;
+}
+
+render();
+</script>
+
+</body>
+</html>
